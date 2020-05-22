@@ -35,7 +35,7 @@ def train_epoch(curr_db, description, batch_size=32):
     
     mode = description.lower()
     assert mode in ['training', 'validation', 'debug'], 'Unknown mode {}'.format(description)
-    dataloader = DataLoader(dataset=curr_db, batch_size=batch_size, shuffle=shuffle, collate_fn=curr_db.collate_fn, num_workers=0)
+    dataloader = DataLoader(dataset=curr_db, batch_size=batch_size, shuffle=shuffle, num_workers=0)
     if mode == 'validation':
         bert_model.eval()
         linear_model.eval()
