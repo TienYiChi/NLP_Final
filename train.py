@@ -17,7 +17,8 @@ bert_model.to(device)
 linear_model = My_linear()
 linear_model.to(device)
 
-cls_criteria = nn.BCELoss().to(device)
+cls_balancer = torch.tensor([10])
+cls_criteria = nn.BCEWithLogitsLoss(pos_weight=cls_balancer).to(device)
 params = list(bert_model.parameters()) + list(linear_model.parameters())
 
 total_optimizer = AdamW(params, lr=5e-05, weight_decay=0.012)
@@ -52,10 +53,10 @@ def train_epoch(curr_db, description, batch_size=32):
     for bi, (padded, segment, attention_mask, seq_id, gold) \
         in tqdm(enumerate(dataloader), desc=description, total=len(dataloader)):
 
-        token_tensor = torch.from_numpy(padded).to(device)
-        segment = torch.from_numpy(segment).to(device)
-        mask = torch.from_numpy(attention_mask).to(device)
-        Y_label = torch.from_numpy(gold).to(device)
+        token_tensor = padded.to(device)
+        segment = segment.to(device)
+        mask = attention_mask.to(device)
+        Y_label = gold.to(device)
         
         total_optimizer.zero_grad()
         if mode == 'validation':
@@ -64,7 +65,7 @@ def train_epoch(curr_db, description, batch_size=32):
         else:
             last_hidden, pooler_output = bert_model(token_tensor, token_type_ids=segment, attention_mask=mask)
     
-        cls_score = linear_model(pooler_output, "cls")
+        cls_score = linear_model(pooler_output)
         cls_loss = cls_criteria(cls_score, Y_label)
         
         total_loss = cls_loss
@@ -74,20 +75,13 @@ def train_epoch(curr_db, description, batch_size=32):
             total_optimizer.step()
         else:
             pass
-        
-        cls_score = cls_score.cpu().detach()
-
-
-        batch_size = len(qids)
-        for i in range(batch_size):
-            predictions[mode]["{}".format(qids[i])] = answers[i].replace(" ","")
 
         epoch_total_loss += total_loss/len(curr_db)
 
-        if mode in ['training'] and bi/num_of_batch > counter: #breakpoint saving
-            save_train(epoch, 'f'+str(counter))
-            print('Saved at breakpoint: epoch {}, frac {}, where batch_loss={}'.format(epoch, counter, total_loss))
-            counter += 0.334
+        # if mode in ['training'] and bi/num_of_batch > counter: #breakpoint saving
+        #     save_train(epoch, 'f'+str(counter))
+        #     print('Saved at breakpoint: epoch {}, frac {}, where batch_loss={}'.format(epoch, counter, total_loss))
+        #     counter += 0.334
     
     epoch_loss_log = "Epoch:{} | total_loss: {}".format(epoch, epoch_total_loss)
     history[mode].append(epoch_loss_log)
@@ -110,14 +104,6 @@ def save_train(epoch, flag=False, save_model=True):
         torch.save(linear_model.state_dict(), 'model/e{}_linear.pkl'.format(epoch))
         torch.save(bert_model.state_dict(), 'model/e{}_bert.pkl'.format(epoch))
 
-    for mode in history:
-        with open(r'history/history_' + mode + '.txt', 'w', encoding='utf-8') as f:
-            for his in history[mode]:
-                f.write(str(his)+'\n')
-    for mode in predictions:
-
-        with open(r'predictions/predict_' + mode + '_e{}_'.format(epoch) + '.json', 'w', encoding='utf-8') as f:
-            f.write(json.dumps(predictions[mode]))
 
 train_db=CorpusData(partition='train')
 # valid_db=CorpusData(partition='test')
