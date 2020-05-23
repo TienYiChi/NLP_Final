@@ -13,6 +13,8 @@ class CorpusData(Dataset):
             f_name = 'resources/train.csv'
         elif partition is 'test':
             f_name = 'resources/test.csv'
+        elif partition is 'valid':
+            f_name = 'resources/valid_partial.csv'
 
         with open(f_name, 'r', encoding="utf-8") as f:
             self._data = list(csv.DictReader(f, delimiter=';'))

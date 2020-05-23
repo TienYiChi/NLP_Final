@@ -1,4 +1,4 @@
-import os, csv
+import os, csv, argparse
 import numpy as np
 import torch
 from transformers import AdamW, BertModel
@@ -12,19 +12,36 @@ from head import My_linear
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+def _parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--resume', type=bool, default=False)
+    parser.add_argument('--resume_ep', type=int, default=0)
+    return parser.parse_args()
+
+args = _parse_args()
+
 bert_model = BertModel.from_pretrained("bert-base-uncased")
-bert_model.to(device)
-linear_model = My_linear()
-linear_model.to(device)
+
+if args.resume:
+    START_epoch = args.resume_ep + 1
+    bert_model.load_state_dict(torch.load("model/e{}_bert.pkl".format(args.resume_ep)))
+    bert_model.to(device)
+    linear_model = My_linear()
+    linear_model.load_state_dict(torch.load("model/e{}_linear.pkl".format(args.resume_ep)))
+    linear_model.to(device)
+else:
+    START_epoch = 0
+    bert_model.to(device)
+    linear_model = My_linear()
+    linear_model.to(device)
 
 cls_balancer = torch.tensor([10])
 cls_criteria = nn.BCEWithLogitsLoss(pos_weight=cls_balancer).to(device)
 params = list(bert_model.parameters()) + list(linear_model.parameters())
 
-total_optimizer = AdamW(params, lr=5e-05, weight_decay=0.012)
+total_optimizer = AdamW(params, lr=1e-4, weight_decay=0.012)
 
 max_epoch = 10
-START_epoch = 0
 
 history = {'training':[],'validation':[],'debug':[]}
 
@@ -108,13 +125,12 @@ def save_train(epoch, flag=False, save_model=True):
 train_db=CorpusData(partition='train')
 # valid_db=CorpusData(partition='test')
 
-for epoch in range(max_epoch):
-    epoch += START_epoch
+for epoch in range(START_epoch, max_epoch):
     print('Epoch: {}'.format(epoch))
     predictions = {'training':{}, 'validation':{},'debug':{}} 
     #total_optimizer.zero_grad()
     try:
-        train_epoch(train_db, 'Training', batch_size=8)
+        train_epoch(train_db, 'Training', batch_size=12)
         # train_epoch(valid_db, 'validation', batch_size=4)
     except:
         # save_train(epoch, 'WARN')
