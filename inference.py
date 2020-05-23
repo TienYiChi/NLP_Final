@@ -12,11 +12,18 @@ from head import My_linear
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+def _parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epoch', type=int, default=0)
+    return parser.parse_args()
+
+args = _parse_args()
+
 bert_model = BertModel.from_pretrained("bert-base-uncased")
-bert_model.load_state_dict(torch.load("model/e{}_bert.pkl".format(9)))
+bert_model.load_state_dict(torch.load("model/e{}_bert.pkl".format(args.epoch)))
 bert_model.to(device)
 linear_model = My_linear()
-linear_model.load_state_dict(torch.load("model/e{}_linear.pkl".format(9)))
+linear_model.load_state_dict(torch.load("model/e{}_linear.pkl".format(args.epoch)))
 linear_model.to(device)
 
 history = {'training':[],'validation':[],'debug':[]}
@@ -57,12 +64,15 @@ def train_epoch(curr_db, description, batch_size=1):
                 last_hidden, pooler_output = bert_model(token_tensor, token_type_ids=segment, attention_mask=mask)
         
             cls_score = linear_model(pooler_output)
-            cls_score = 1 if cls_score.view(1).item() > 0.6 else 0
+            cls_score = torch.sigmoid(cls_score)
+            #cls_score = 1 if cls_score.view(1).item() > 0.210111 else 0
 
-            writer.writerow({'Index': seq_id[0][0], 'Gold': cls_score})
+            writer.writerow({'Index': seq_id[0][0], 'Gold': cls_score.view(1).item()})
+            # writer.writerow({'Index': seq_id[0][0], 'Gold': cls_score})
 
 
 # train_db=CorpusData(partition='train')
-valid_db=CorpusData(partition='test')
+# test_db=CorpusData(partition='test')
+valid_db=CorpusData(partition='valid')
 
 train_epoch(valid_db, 'validation', batch_size=1)
