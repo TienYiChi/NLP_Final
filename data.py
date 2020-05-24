@@ -10,7 +10,7 @@ class CorpusData(Dataset):
         bert_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
         self.partition = partition
         if partition is 'train':
-            f_name = 'resources/train.csv'
+            f_name = 'resources/train_partial.csv'
         elif partition is 'test':
             f_name = 'resources/test.csv'
         elif partition is 'valid':

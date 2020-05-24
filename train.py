@@ -16,6 +16,7 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--resume', type=bool, default=False)
     parser.add_argument('--resume_ep', type=int, default=0)
+    parser.add_argument('--max_epoch', type=int, default=10)
     return parser.parse_args()
 
 args = _parse_args()
@@ -34,14 +35,13 @@ else:
     bert_model.to(device)
     linear_model = My_linear()
     linear_model.to(device)
+max_epoch = args.max_epoch
 
-cls_balancer = torch.tensor([10])
+cls_balancer = torch.tensor([15])
 cls_criteria = nn.BCEWithLogitsLoss(pos_weight=cls_balancer).to(device)
 params = list(bert_model.parameters()) + list(linear_model.parameters())
 
-total_optimizer = AdamW(params, lr=1e-4, weight_decay=0.012)
-
-max_epoch = 10
+total_optimizer = AdamW(params, lr=2e-5, weight_decay=0.012)
 
 history = {'training':[],'validation':[],'debug':[]}
 

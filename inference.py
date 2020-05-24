@@ -15,6 +15,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, default=0)
+    parser.add_argument('--mode', type=str, default='test')
     return parser.parse_args()
 
 args = _parse_args()
@@ -44,7 +45,7 @@ def train_epoch(curr_db, description, batch_size=1):
         bert_model.train()
         linear_model.train()
 
-    with open('output/submission.csv', 'w', newline='') as csvfile:
+    with open('output/submission_{}.csv'.format(args.epoch), 'w', newline='') as csvfile:
         fieldnames = ['Index', 'Gold']
 
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -65,14 +66,14 @@ def train_epoch(curr_db, description, batch_size=1):
         
             cls_score = linear_model(pooler_output)
             cls_score = torch.sigmoid(cls_score)
-            #cls_score = 1 if cls_score.view(1).item() > 0.210111 else 0
+            cls_score = 1 if cls_score.view(1).item() > 0.94 else 0
 
-            writer.writerow({'Index': seq_id[0][0], 'Gold': cls_score.view(1).item()})
-            # writer.writerow({'Index': seq_id[0][0], 'Gold': cls_score})
+            #writer.writerow({'Index': seq_id[0][0], 'Gold': cls_score.view(1).item()})
+            writer.writerow({'Index': seq_id[0][0], 'Gold': cls_score})
 
 
 # train_db=CorpusData(partition='train')
-# test_db=CorpusData(partition='test')
+test_db=CorpusData(partition='test')
 valid_db=CorpusData(partition='valid')
 
-train_epoch(valid_db, 'validation', batch_size=1)
+train_epoch(test_db, 'validation', batch_size=1)
